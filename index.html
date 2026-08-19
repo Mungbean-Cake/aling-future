@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0f0c29">
+<meta name="format-detection" content="telephone=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>阿泠 · 我们的以后</title>
+<style>
+:root{
+  --bg0:#0f0c29; --bg1:#1a1440; --bg2:#302b63; --bg3:#24243e;
+  --pink:#ff7eb3; --pink2:#ff6a9c; --purple:#8f7bff; --gold:#ffd28a;
+  --ink:#f6f2ff; --ink2:#cfc6e8; --muted:#9c92c0;
+  --card:rgba(255,255,255,.055); --card-border:rgba(255,255,255,.12);
+  --shadow:0 12px 40px rgba(0,0,0,.35);
+  --r:20px;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent; margin:0; padding:0;}
+html,body{height:100%;}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  color:var(--ink);
+  background:linear-gradient(160deg,var(--bg0),var(--bg1) 45%,var(--bg2));
+  background-attachment:fixed;
+  min-height:100vh;
+  overflow-x:hidden;
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+#stars{position:fixed; inset:0; pointer-events:none; z-index:0;}
+.star{position:absolute; border-radius:50%; background:#fff; opacity:.7; animation:twinkle 3.5s ease-in-out infinite;}
+@keyframes twinkle{0%,100%{opacity:.15; transform:scale(.7);}50%{opacity:.85; transform:scale(1.15);}}
+#app{position:relative; z-index:1; max-width:520px; margin:0 auto; padding:0 16px 96px;}
+h1,h2,h3{font-weight:700; letter-spacing:.5px;}
+.screen{display:none; animation:fade .4s ease both;}
+.screen.active{display:block;}
+@keyframes fade{from{opacity:0; transform:translateY(14px);}to{opacity:1; transform:none;}}
+.header{padding:22px 2px 14px; text-align:center;}
+.header .logo{font-size:26px; font-weight:800; background:linear-gradient(90deg,var(--pink),var(--purple),var(--gold)); -webkit-background-clip:text; background-clip:text; color:transparent; text-shadow:none;}
+.header .sub{color:var(--muted); font-size:12.5px; margin-top:4px; letter-spacing:2px;}
+.card{background:var(--card); border:1px solid var(--card-border); border-radius:var(--r); padding:18px; margin:12px 0; box-shadow:var(--shadow); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);}
+.card h3{font-size:15px; margin-bottom:10px; display:flex; align-items:center; gap:7px;}
+.card h3 .dot{width:8px;height:8px;border-radius:50%;background:linear-gradient(90deg,var(--pink),var(--purple)); display:inline-block;}
+.muted{color:var(--muted); font-size:12px;}
+.gold{color:var(--gold);}
+.pink{color:var(--pink);}
+/* 计时 */
+.big-days{font-size:64px; font-weight:800; line-height:1; text-align:center;
+  background:linear-gradient(180deg,#fff,var(--pink2)); -webkit-background-clip:text; background-clip:text; color:transparent;
+  margin:8px 0 2px; filter:drop-shadow(0 6px 22px rgba(255,110,160,.35));}
+.big-days small{font-size:18px; vertical-align:super;}
+.ticker{text-align:center; color:var(--ink2); font-size:13px; margin-bottom:4px;}
+.ticker b{color:var(--gold); font-variant-numeric:tabular-nums; font-size:15px;}
+.heartbeat{text-align:center; font-size:34px; animation:beat 1.6s ease-in-out infinite; display:inline-block;}
+@keyframes beat{0%,100%{transform:scale(1);}12%{transform:scale(1.18);}24%{transform:scale(1);}36%{transform:scale(1.12);}48%{transform:scale(1);}}
+/* 想对你说的话 */
+.quote-card{background:linear-gradient(135deg,rgba(255,126,179,.14),rgba(143,123,255,.14)); border-color:rgba(255,255,255,.16); text-align:center;}
+.quote-card .q{font-size:16.5px; line-height:1.9; font-weight:600;}
+.quote-card .q-mark{font-size:26px; opacity:.6; line-height:1;}
+.quote-card .q-meta{margin-top:10px; font-size:11.5px; color:var(--muted); letter-spacing:1px;}
+/* 倒计时 */
+.event{display:flex; align-items:center; gap:12px; padding:13px 4px; border-bottom:1px solid rgba(255,255,255,.07);}
+.event:last-child{border-bottom:none;}
+.event .e-emoji{font-size:26px; width:42px; height:42px; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,.06); border-radius:12px; flex:0 0 auto;}
+.event .e-main{flex:1; min-width:0;}
+.event .e-name{font-size:15px; font-weight:600;}
+.event .e-date{font-size:11.5px; color:var(--muted);}
+.event .e-right{text-align:right; flex:0 0 auto;}
+.event .e-days{font-size:20px; font-weight:800; color:var(--gold); font-variant-numeric:tabular-nums;}
+.event .e-days small{font-size:11px; font-weight:500; color:var(--muted);}
+.event .e-done{color:var(--pink); font-size:13px; font-weight:700;}
+.event .e-edit{margin-left:6px; opacity:.45; font-size:15px;}
+/* 清单 */
+.progress{height:9px; background:rgba(255,255,255,.1); border-radius:99px; overflow:hidden; margin:8px 0 4px;}
+.progress i{display:block; height:100%; background:linear-gradient(90deg,var(--pink),var(--purple)); border-radius:99px; transition:width .5s ease;}
+.todo-item{display:flex; align-items:center; gap:11px; padding:11px 4px; border-bottom:1px solid rgba(255,255,255,.07);}
+.todo-item:last-child{border-bottom:none;}
+.todo-item .box{width:24px;height:24px;border-radius:8px;border:2px solid rgba(255,255,255,.35); flex:0 0 auto; display:flex;align-items:center;justify-content:center; font-size:14px; color:transparent; transition:.2s;}
+.todo-item.done .box{background:linear-gradient(135deg,var(--pink),var(--purple)); border-color:transparent; color:#fff;}
+.todo-item .t{flex:1; font-size:14px; color:var(--ink2);}
+.todo-item.done .t{color:var(--muted); text-decoration:line-through;}
+.todo-item .t-edit{opacity:.4; font-size:15px; flex:0 0 auto;}
+/* 愿望瓶 */
+.wish{position:relative; padding:16px; border-radius:16px; margin:10px 0; background:linear-gradient(135deg,rgba(255,126,179,.12),rgba(143,123,255,.12)); border:1px solid var(--card-border);}
+.wish .w-tag{position:absolute; top:10px; right:12px; font-size:11px; color:var(--gold); border:1px solid rgba(255,210,138,.4); padding:2px 8px; border-radius:99px;}
+.wish .w-tag.done{color:#9fe6b0; border-color:rgba(159,230,176,.4);}
+.wish .w-text{font-size:15px; line-height:1.8; padding-right:70px;}
+.wish .w-foot{display:flex; justify-content:space-between; align-items:center; margin-top:12px; font-size:12px; color:var(--muted);}
+.wish .w-actions{display:flex; gap:12px;}
+.wish .w-actions span{opacity:.6;}
+/* 按钮 */
+.btn{display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:11px 18px; border-radius:14px; border:none; font-size:14px; font-weight:700; cursor:pointer; background:linear-gradient(90deg,var(--pink),var(--purple)); color:#fff; box-shadow:0 8px 20px rgba(255,110,160,.3); transition:.2s;}
+.btn:active{transform:scale(.96);}
+.btn.ghost{background:rgba(255,255,255,.08); box-shadow:none; color:var(--ink2); border:1px solid var(--card-border);}
+.btn.block{width:100%;}
+.btn.sm{padding:7px 12px; font-size:12.5px; border-radius:10px;}
+.btn-row{display:flex; gap:10px;}
+/* 底部导航 */
+.nav{position:fixed; left:0; right:0; bottom:0; z-index:20; display:flex; background:rgba(20,16,48,.86); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); border-top:1px solid rgba(255,255,255,.09); padding:8px 4px calc(8px + env(safe-area-inset-bottom));}
+.nav button{flex:1; background:none; border:none; color:var(--muted); font-size:11px; padding:5px 0; display:flex; flex-direction:column; align-items:center; gap:3px; cursor:pointer; transition:.2s;}
+.nav button .ico{font-size:21px; line-height:1;}
+.nav button.on{color:var(--pink);}
+.nav button.on .ico{transform:translateY(-2px) scale(1.12);}
+/* 弹窗 */
+.modal-mask{position:fixed; inset:0; z-index:40; background:rgba(8,6,24,.72); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; padding:20px; animation:fade .25s ease both;}
+.modal{width:100%; max-width:400px; background:linear-gradient(160deg,#221b4e,#141037); border:1px solid var(--card-border); border-radius:22px; padding:22px; box-shadow:var(--shadow);}
+.modal h3{font-size:17px; margin-bottom:16px; text-align:center;}
+.field{margin-bottom:13px;}
+.field label{display:block; font-size:12.5px; color:var(--muted); margin-bottom:6px;}
+.field input,.field textarea,.field select{width:100%; padding:11px 12px; border-radius:12px; border:1px solid var(--card-border); background:rgba(255,255,255,.06); color:var(--ink); font-size:14px; outline:none; font-family:inherit;}
+.field input:focus,.field textarea:focus{border-color:var(--pink);}
+.field textarea{min-height:80px; resize:vertical;}
+.modal .btn-row{margin-top:16px;}
+/* 提示 */
+#toast-root{position:fixed; left:50%; bottom:110px; transform:translateX(-50%); z-index:60; display:flex; flex-direction:column; gap:8px; align-items:center; pointer-events:none;}
+.toast{background:rgba(30,24,64,.95); border:1px solid var(--card-border); color:var(--ink); padding:9px 16px; border-radius:99px; font-size:13px; box-shadow:var(--shadow); animation:pop .3s ease both; max-width:88vw; text-align:center;}
+@keyframes pop{from{opacity:0; transform:translateY(8px) scale(.92);}to{opacity:1; transform:none;}}
+/* 设置/我们 */
+.sync-dot{width:9px;height:9px;border-radius:50%;background:#9fe6b0; display:inline-block; margin-right:6px; box-shadow:0 0 8px rgba(159,230,176,.8);}
+.sync-dot.off{background:#ff8f8f; box-shadow:0 0 8px rgba(255,143,143,.8);}
+.set-row{display:flex; justify-content:space-between; align-items:center; padding:13px 4px; border-bottom:1px solid rgba(255,255,255,.07); gap:10px;}
+.set-row:last-child{border-bottom:none;}
+.set-row .l{font-size:14px;}
+.set-row .l small{display:block; color:var(--muted); font-size:11.5px; margin-top:2px;}
+.set-row .v{color:var(--muted); font-size:13px; text-align:right; word-break:break-all;}
+.letter{font-size:15px; line-height:2; color:var(--ink2);}
+.letter p{margin:10px 0;}
+/* 首次设置 */
+.setup{min-height:100vh; display:flex; flex-direction:column; justify-content:center; padding:30px 18px; position:relative; z-index:2;}
+.setup .big-heart{text-align:center; font-size:60px; animation:beat 1.8s ease-in-out infinite;}
+.setup .title{text-align:center; font-size:26px; font-weight:800; margin:6px 0 2px; background:linear-gradient(90deg,var(--pink),var(--purple)); -webkit-background-clip:text; background-clip:text; color:transparent;}
+.setup .sub{text-align:center; color:var(--muted); font-size:13px; margin-bottom:26px;}
+.setup .card{padding:22px;}
+/* 小图标 */
+.small-actions{display:flex; gap:14px; align-items:center;}
+.small-actions span{opacity:.55; cursor:pointer; font-size:15px;}
+.small-actions span:active{opacity:1;}
+/* 空态 */
+.empty{text-align:center; color:var(--muted); padding:26px 0; font-size:13px;}
+.empty .e-ico{font-size:34px; display:block; margin-bottom:8px; opacity:.7;}
+
+</style>
+</head>
+<body>
+<div id="stars"></div>
+<div id="app"></div>
+<div id="modal-root"></div>
+<div id="toast-root"></div>
+<script>
+"use strict";
+// ============================================================
+// 云端配置：把 Supabase 的两样东西粘贴进来（部署前必填）
+// anon key 本身设计为可公开，但内容仅靠房间号+暗号做门禁；
+// 建议专门为这个小站建一个独立项目，别放其他敏感数据。
+// ============================================================
+const SB_CONFIG = {
+  url: "https://ohrmhwfjutznizzrqyfj.supabase.co",
+  anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9ocm1od2ZqdXR6bmppenJxeWZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNDY4MDIsImV4cCI6MjEwMjcyMjgwMn0._0_1nGmZlpFci0FZ-YhFjDaXCIOMt6qGMi86GfqUTnQ"
+};
+const START_DATE = "2024-06-14";
+const LS = { room: "al_room_v1", secret: "al_secret_v1", local: "al_local_v1" };
+const NL = String.fromCharCode(10);
+const WISH_TYPES = [
+  { id: "thing", label: "想要的东西", emoji: "🎁" },
+  { id: "together", label: "想一起去", emoji: "✈️" },
+  { id: "goal", label: "以后的小目标", emoji: "🌱" },
+  { id: "other", label: "其他愿望", emoji: "💌" }
+];
+
+function isCloud(){ return SB_CONFIG.url && SB_CONFIG.url.indexOf("PASTE") < 0; }
+function $(s, r){ return (r || document).querySelector(s); }
+function $$(s, r){ return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+function esc(s){ return String(s == null ? "" : s).replace(/[&<>"']/g, function(c){ if (c === "&") return "&amp;"; if (c === "<") return "&lt;"; if (c === ">") return "&gt;"; if (c === '"') return "&quot;"; return "&#39;"; }); }
+function hashStr(s){ let h = 2166136261; for (let i = 0; i < s.length; i++){ h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(16) + "_" + s.length; }
+function pad2(n){ return String(n).padStart(2, "0"); }
+function fmtDate(d){ return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate()); }
+function parseDate(s){ const p = String(s).split("-").map(Number); return new Date(p[0], p[1] - 1, p[2] || 1); }
+function todayStart(){ const d = new Date(); d.setHours(0, 0, 0, 0); return d; }
+function daysSince(start){ const s = parseDate(start); const t = todayStart(); return Math.max(0, Math.floor((t - s) / 86400000) + 1); }
+function daysLeft(target){ const tgt = parseDate(target); const t = todayStart(); return Math.ceil((tgt - t) / 86400000); }
+function sinceParts(start, now){ now = now || new Date(); const s = parseDate(start); let y = now.getFullYear() - s.getFullYear(); let m = now.getMonth() - s.getMonth(); let d = now.getDate() - s.getDate(); if (d < 0){ m--; d += new Date(now.getFullYear(), now.getMonth(), 0).getDate(); } if (m < 0){ y--; m += 12; } return { y: y, m: m, d: d, h: now.getHours(), mi: now.getMinutes(), sec: now.getSeconds() }; }
+function toast(msg){ const el = document.createElement("div"); el.className = "toast"; el.textContent = msg; $("#toast-root").appendChild(el); setTimeout(function(){ el.style.opacity = "0"; el.style.transition = "opacity .4s"; setTimeout(function(){ el.remove(); }, 400); }, 2400); }
+function openModal(html){ closeModal(); const mask = document.createElement("div"); mask.className = "modal-mask"; mask.innerHTML = "<div class='modal'>" + html + "</div>"; mask.addEventListener("click", function(e){ if (e.target === mask) closeModal(); }); $("#modal-root").appendChild(mask); return mask; }
+function closeModal(){ $("#modal-root").innerHTML = ""; }
+function emptyState(ico, text){ return "<div class='empty'><span class='e-ico'>" + ico + "</span>" + text + "</div>"; }
+function copyText(txt){ const ta = document.createElement("textarea"); ta.value = txt; ta.style.position = "fixed"; ta.style.opacity = "0"; document.body.appendChild(ta); ta.focus(); ta.select(); let ok = false; try { ok = document.execCommand("copy"); } catch(e){} ta.remove(); return ok; }
+
+// ===== 默认内容（第一次进入时生成，之后随时共同编辑） =====
+const DEFAULT_LETTER = [
+  "致阿泠：",
+  "",
+  "2024 年 6 月 14 日，是很普通的一天，也是我往后所有日子里，最想记住的一天。",
+  "这里是我们两个人的小站：想一起去的地方、想要的东西、还没实现的愿望，都慢慢写下来。",
+  "日子很长，我们一件一件来。等以后回头看，这里会装满我们的以后。",
+  "",
+  "—— 想和阿泠一起走到很远的人"
+].join(NL);
+
+function defaultState(){
+  return {
+    startDate: START_DATE,
+    quotes: [],
+    events: [],
+    todos: [],
+    wishes: [],
+    letter: DEFAULT_LETTER
+  };
+}
+
+// ============================================================
+// 应用状态
+// ============================================================
+let state = null;
+let room = "";
+let secret = "";
+let objectId = null;
+let lastSeen = null;
+let pollTimer = null;
+let pushTimer = null;
+let tickerTimer = null;
+let syncing = false;
+let cloudOK = false;
+
+function loadLocal(){ try { return JSON.parse(localStorage.getItem(LS.local) || "null"); } catch(e){ return null; } }
+function saveLocal(){ try { localStorage.setItem(LS.local, JSON.stringify(state)); } catch(e){} }
+function merge(base, src){ const out = {}; for (const k in base) out[k] = base[k]; if (src) for (const k in src) out[k] = src[k]; return out; }
+
+// ============================================================
+// 云端（Supabase REST）
+// ============================================================
+async function sbFetch(path, opts){
+  opts = opts || {};
+  const headers = {
+    "apikey": SB_CONFIG.anonKey,
+    "Authorization": "Bearer " + SB_CONFIG.anonKey,
+    "Content-Type": "application/json"
+  };
+  if (opts.prefer) headers["Prefer"] = opts.prefer;
+  const res = await fetch(SB_CONFIG.url + "/rest/v1/" + path, { method: opts.method || "GET", headers: headers, body: opts.body });
+  const txt = await res.text();
+  let data = null;
+  if (txt) { try { data = JSON.parse(txt); } catch(e) { data = null; } }
+  if (!res.ok) throw new Error(data && data.message ? data.message : ("HTTP " + res.status));
+  return data;
+}
+async function sbGetByRoom(r){
+  const arr = await sbFetch("couple_spaces?select=*&room=eq." + encodeURIComponent(r) + "&order=updated_at.desc&limit=1");
+  return (arr && arr[0]) ? arr[0] : null;
+}
+async function sbGetById(id){
+  const arr = await sbFetch("couple_spaces?select=*&id=eq." + encodeURIComponent(id));
+  return (arr && arr[0]) ? arr[0] : null;
+}
+async function sbInsert(row){
+  const arr = await sbFetch("couple_spaces", { method: "POST", body: JSON.stringify(row), prefer: "return=representation" });
+  return (arr && arr[0]) ? arr[0] : null;
+}
+async function sbUpdate(id, fields){
+  const arr = await sbFetch("couple_spaces?id=eq." + encodeURIComponent(id), { method: "PATCH", body: JSON.stringify(fields), prefer: "return=representation" });
+  return (arr && arr[0]) ? arr[0] : null;
+}
+function hashSecret(){ return hashStr(room + "::" + secret); }
+
+async function cloudBoot(){
+  try {
+    let obj = await sbGetByRoom(room);
+    if (obj) {
+      if ((obj.secret_hash || "") !== hashSecret()) { toast("暗号好像变了，重新输入一下"); lockOut(); return; }
+      state = merge(defaultState(), JSON.parse(obj.data || "{}"));
+      objectId = obj.id;
+      lastSeen = obj.updated_at;
+    } else {
+      const now = new Date().toISOString();
+      obj = await sbInsert({ room: room, secret_hash: hashSecret(), data: JSON.stringify(defaultState()), updated_at: now, created_at: now });
+      state = defaultState();
+      objectId = obj.id;
+      lastSeen = obj.updated_at;
+    }
+    cloudOK = true;
+    saveLocal();
+    renderAll();
+    startPoll();
+  } catch(e) {
+    console.warn("cloud boot failed", e);
+    cloudOK = false;
+    toast("云端暂时连不上，先用本地缓存");
+  }
+}
+
+async function push(){
+  if (!isCloud() || !objectId || syncing) return;
+  syncing = true;
+  setSync("...");
+  try {
+    const now = new Date().toISOString();
+    const obj = await sbUpdate(objectId, { data: JSON.stringify(state), updated_at: now });
+    lastSeen = obj ? obj.updated_at : now;
+    cloudOK = true;
+    setSync("ok");
+  } catch(e) {
+    cloudOK = false;
+    setSync("off");
+  } finally { syncing = false; }
+}
+
+async function poll(){
+  if (!isCloud() || !objectId) return;
+  try {
+    const obj = await sbGetById(objectId);
+    if (obj && obj.updated_at && obj.updated_at !== lastSeen) {
+      state = merge(defaultState(), JSON.parse(obj.data || "{}"));
+      lastSeen = obj.updated_at;
+      saveLocal();
+      renderAll();
+    }
+    cloudOK = true;
+    setSync("ok");
+  } catch(e) { cloudOK = false; setSync("off"); }
+}
+
+function schedulePush(){ if (isCloud()){ clearTimeout(pushTimer); pushTimer = setTimeout(push, 500); } else { saveLocal(); } }
+function persist(){ schedulePush(); }
+function startPoll(){ stopPoll(); if (isCloud()) pollTimer = setInterval(poll, 3500); }
+function stopPoll(){ if (pollTimer){ clearInterval(pollTimer); pollTimer = null; } }
+function setSync(s){
+  const dot = $("#syncDot");
+  if (!dot) return;
+  if (s === "ok"){ dot.className = "sync-dot"; $("#syncText").textContent = "云端同步正常"; }
+  else if (s === "..."){ dot.className = "sync-dot"; $("#syncText").textContent = "同步中…"; }
+  else { dot.className = "sync-dot off"; $("#syncText").textContent = "云端未连接"; }
+}
+
+// ============================================================
+// 页面骨架与导航
+// ============================================================
+function renderShell(){
+  $("#app").innerHTML =
+    "<div id='home' class='screen active'></div>" +
+    "<div id='events' class='screen'></div>" +
+    "<div id='todos' class='screen'></div>" +
+    "<div id='wishes' class='screen'></div>" +
+    "<div id='us' class='screen'></div>" +
+    "<nav class='nav'>" +
+      "<button data-act='tab' data-id='home' class='on'><span class='ico'>💗</span>首页</button>" +
+      "<button data-act='tab' data-id='events'><span class='ico'>📅</span>倒计时</button>" +
+      "<button data-act='tab' data-id='todos'><span class='ico'>✅</span>一起做</button>" +
+      "<button data-act='tab' data-id='wishes'><span class='ico'>🌠</span>愿望</button>" +
+      "<button data-act='tab' data-id='us'><span class='ico'>🏠</span>我们</button>" +
+    "</nav>";
+  renderAll();
+  startTicker();
+  startPoll();
+}
+
+function switchTab(t){
+  $$(".screen").forEach(function(s){ s.classList.remove("active"); });
+  $("#" + t).classList.add("active");
+  $$("#app .nav button").forEach(function(b){ b.classList.toggle("on", b.getAttribute("data-id") === t); });
+  renderTab(t);
+}
+function renderTab(t){
+  if (t === "home") renderHome();
+  else if (t === "events") renderEvents();
+  else if (t === "todos") renderTodos();
+  else if (t === "wishes") renderWishes();
+  else if (t === "us") renderUs();
+}
+function renderAll(){ renderHome(); renderEvents(); renderTodos(); renderWishes(); renderUs(); }
+
+function startTicker(){ if (tickerTimer) return; updateTick(); tickerTimer = setInterval(updateTick, 1000); }
+function updateTick(){
+  const el = $("#tick");
+  if (!el) return;
+  const p = sinceParts(state.startDate);
+  el.innerHTML = "<b>" + p.y + "</b> 年 <b>" + p.m + "</b> 个月 <b>" + p.d + "</b> 天 <b>" + pad2(p.h) + "</b> 时 <b>" + pad2(p.mi) + "</b> 分 <b>" + pad2(p.sec) + "</b> 秒";
+}
+
+// ============================================================
+// 首页：恋爱计时 + 每日一句想说的话 + 最近的日子
+// ============================================================
+function quoteOfDay(){
+  if (!state.quotes.length) return { text: "这里还是空的。去写第一句想对你说的话吧，它会变成以后每一天的小惊喜。", meta: "等第一句想说的话" };
+  const days = daysSince(state.startDate);
+  const idx = (days - 1) % state.quotes.length;
+  return { text: state.quotes[idx], meta: "第 " + (idx + 1) + " 句 · 共 " + state.quotes.length + " 句" };
+}
+function nextEvent(){
+  let best = null;
+  state.events.forEach(function(e){
+    const dl = daysLeft(e.date);
+    if (dl >= 0 && (!best || dl < best.dLeft)) best = { name: e.name, emoji: e.emoji, date: e.date, dLeft: dl };
+  });
+  return best;
+}
+function renderHome(){
+  const days = daysSince(state.startDate);
+  const q = quoteOfDay();
+  const nx = nextEvent();
+  let nxHtml = "";
+  if (nx) {
+    nxHtml = "<div class='card'><h3><span class='dot'></span>最近的日子</h3>" +
+      "<div class='event' style='border:none;padding:8px 0 0;'>" +
+        "<div class='e-emoji'>" + esc(nx.emoji || "📅") + "</div>" +
+        "<div class='e-main'><div class='e-name'>" + esc(nx.name) + "</div><div class='e-date'>" + esc(nx.date) + "</div></div>" +
+        "<div class='e-right'><div class='e-days'>" + nx.dLeft + "<small> 天</small></div></div>" +
+      "</div></div>";
+  }
+  $("#home").innerHTML =
+    "<div class='header'><div class='logo'>阿泠 · 我们的以后</div><div class='sub'>SINCE " + esc(state.startDate).replace(/-/g, ".") + "</div></div>" +
+    "<div class='card' style='text-align:center;'>" +
+      "<div class='muted' style='letter-spacing:2px;'>在一起的第</div>" +
+      "<div class='big-days'>" + days + "<small> 天</small></div>" +
+      "<div class='heartbeat'>💗</div>" +
+      "<div class='ticker'>已经一起走过 <span id='tick'></span></div>" +
+    "</div>" +
+    "<div class='card quote-card'>" +
+      "<div class='q-mark'>“</div>" +
+      "<div class='q'>" + esc(q.text) + "</div>" +
+      "<div class='q-meta'>" + esc(q.meta) + "</div>" +
+      "<div class='btn-row' style='margin-top:12px;justify-content:center;'>" +
+        "<button class='btn ghost sm' data-act='addQuote'>✍️ 写一句想说的话</button>" +
+      "</div>" +
+    "</div>" + nxHtml;
+  updateTick();
+}
+
+// ============================================================
+// 倒计时
+// ============================================================
+function renderEvents(){
+  const list = state.events.slice().sort(function(a, b){ return a.date < b.date ? -1 : 1; });
+  let body = "";
+  list.forEach(function(e){
+    const dl = daysLeft(e.date);
+    const passed = dl < 0;
+    body += "<div class='card'><div class='event' style='border:none;padding:0;'>" +
+      "<div class='e-emoji'>" + esc(e.emoji || "📅") + "</div>" +
+      "<div class='e-main'><div class='e-name'>" + esc(e.name) + "</div><div class='e-date'>" + esc(e.date) + (passed ? " · 已过" : "") + "</div></div>" +
+      "<div class='e-right'>" + (passed
+        ? "<div class='e-done'>已过去<br><small>" + (-dl) + " 天</small></div>"
+        : "<div class='e-days'>" + dl + "<small> 天</small></div>") +
+        "<div class='small-actions' style='margin-top:8px;justify-content:flex-end;'><span data-act='editEvent' data-id='" + e.id + "'>✏️</span><span data-act='delEvent' data-id='" + e.id + "'>🗑️</span></div>" +
+      "</div></div></div>";
+  });
+  $("#events").innerHTML =
+    "<div class='header'><div class='logo'>未来倒计时</div><div class='sub'>把期待的日子都记下来</div></div>" +
+    "<button class='btn block' data-act='addEvent'>＋ 添加一个期待的日子</button>" +
+    (list.length ? body : emptyState("📅", "还没有期待的日期，先添加一个吧"));
+}
+function eventModal(id){
+  const e = id ? state.events.find(function(x){ return x.id === id; }) : null;
+  openModal("<h3>" + (e ? "编辑期待的日子" : "添加期待的日子") + "</h3>" +
+    "<form id='mf'>" +
+      "<div class='field'><label>名称</label><input name='name' required maxlength='30' value='" + (e ? esc(e.name) : "") + "'></div>" +
+      "<div class='field'><label>日期</label><input name='date' type='date' required value='" + (e ? esc(e.date) : "") + "'></div>" +
+      "<div class='field'><label>小图标（一个 emoji）</label><input name='emoji' maxlength='4' value='" + (e ? esc(e.emoji || "") : "") + "' placeholder='🎂'></div>" +
+      "<div class='btn-row'><button type='submit' class='btn' style='flex:1;'>保存</button><button type='button' class='btn ghost' data-act='close'>取消</button></div>" +
+    "</form>");
+  $("#mf").addEventListener("submit", function(ev){
+    ev.preventDefault();
+    const f = new FormData(ev.target);
+    const name = String(f.get("name") || "").trim();
+    const date = String(f.get("date") || "");
+    const emoji = String(f.get("emoji") || "").trim() || "📅";
+    if (!name || !date) return toast("名称和日期都要填");
+    if (e) { e.name = name; e.date = date; e.emoji = emoji; }
+    else { state.events.push({ id: uid(), name: name, date: date, emoji: emoji }); }
+    closeModal(); persist(); renderEvents(); renderHome(); toast("已保存");
+  });
+}
+function delEvent(id){
+  if (!confirm("删掉这个日子吗？")) return;
+  state.events = state.events.filter(function(x){ return x.id !== id; });
+  persist(); renderEvents(); renderHome();
+}
+
+// ============================================================
+// 一起做的事
+// ============================================================
+function renderTodos(){
+  const total = state.todos.length;
+  const done = state.todos.filter(function(t){ return t.done; }).length;
+  const pct = total ? Math.round(done / total * 100) : 0;
+  let body = "";
+  state.todos.forEach(function(t){
+    body += "<div class='todo-item" + (t.done ? " done" : "") + "'>" +
+      "<div class='box' data-act='toggleTodo' data-id='" + t.id + "'>✓</div>" +
+      "<div class='t'>" + esc(t.text) + "</div>" +
+      "<div class='t-edit' data-act='editTodo' data-id='" + t.id + "'>✏️</div>" +
+      "<div class='t-edit' data-act='delTodo' data-id='" + t.id + "'>🗑️</div>" +
+    "</div>";
+  });
+  $("#todos").innerHTML =
+    "<div class='header'><div class='logo'>一起做的事</div><div class='sub'>一件一件，慢慢完成</div></div>" +
+    "<div class='card'><div class='set-row' style='padding:4px 0 8px;'><span class='l'>进度 <b class='pink'>" + done + "/" + total + "</b></span><span class='v'>" + pct + "%</span></div>" +
+    "<div class='progress'><i style='width:" + pct + "%'></i></div></div>" +
+    "<button class='btn block' data-act='addTodo'>＋ 添加想一起做的事</button>" +
+    (total ? body : emptyState("✅", "还没有想一起做的事，加一件吧"));
+}
+function todoModal(id){
+  const t = id ? state.todos.find(function(x){ return x.id === id; }) : null;
+  openModal("<h3>" + (t ? "编辑想一起做的事" : "添加想一起做的事") + "</h3>" +
+    "<form id='mf'>" +
+      "<div class='field'><label>想一起做的事</label><input name='text' required maxlength='60' value='" + (t ? esc(t.text) : "") + "' placeholder='例如：一起去海边看日出'></div>" +
+      "<div class='btn-row'><button type='submit' class='btn' style='flex:1;'>保存</button><button type='button' class='btn ghost' data-act='close'>取消</button></div>" +
+    "</form>");
+  $("#mf").addEventListener("submit", function(ev){
+    ev.preventDefault();
+    const v = String(new FormData(ev.target).get("text") || "").trim();
+    if (!v) return toast("写点内容吧");
+    if (t) t.text = v; else state.todos.push({ id: uid(), text: v, done: false });
+    closeModal(); persist(); renderTodos(); toast("已保存");
+  });
+}
+function toggleTodo(id){
+  const t = state.todos.find(function(x){ return x.id === id; });
+  if (!t) return;
+  t.done = !t.done;
+  if (t.done) t.doneAt = fmtDate(new Date()); else delete t.doneAt;
+  persist(); renderTodos();
+}
+function delTodo(id){
+  if (!confirm("删掉这一条吗？")) return;
+  state.todos = state.todos.filter(function(x){ return x.id !== id; });
+  persist(); renderTodos();
+}
+
+// ============================================================
+// 愿望瓶
+// ============================================================
+function typeOf(id){
+  const t = WISH_TYPES.find(function(x){ return x.id === id; });
+  return t || { label: "愿望", emoji: "💌" };
+}
+function renderWishes(){
+  let body = "";
+  state.wishes.forEach(function(w){
+    const tp = typeOf(w.type);
+    body += "<div class='wish'>" +
+      "<span class='w-tag" + (w.done ? " done" : "") + "'>" + tp.emoji + " " + tp.label + (w.done ? " · 已实现" : "") + "</span>" +
+      "<div class='w-text'>" + esc(w.text) + "</div>" +
+      "<div class='w-foot'><span>" + (w.done ? ("✅ " + (w.doneAt || "已实现")) : "🌱 等着实现") + "</span>" +
+      "<span class='w-actions'><span data-act='toggleWish' data-id='" + w.id + "'>" + (w.done ? "↩️" : "✅") + "</span><span data-act='editWish' data-id='" + w.id + "'>✏️</span><span data-act='delWish' data-id='" + w.id + "'>🗑️</span></span>" +
+      "</div></div>";
+  });
+  $("#wishes").innerHTML =
+    "<div class='header'><div class='logo'>愿望瓶</div><div class='sub'>想要的东西、想去的地方，都装进来</div></div>" +
+    "<button class='btn block' data-act='addWish'>＋ 许一个愿望</button>" +
+    (state.wishes.length ? body : emptyState("🌠", "还没有愿望，一起许一个吧"));
+}
+function wishModal(id){
+  const w = id ? state.wishes.find(function(x){ return x.id === id; }) : null;
+  const opts = WISH_TYPES.map(function(tp){
+    return "<option value='" + tp.id + "'" + (w && w.type === tp.id ? " selected" : "") + ">" + tp.emoji + " " + tp.label + "</option>";
+  }).join("");
+  openModal("<h3>" + (w ? "编辑愿望" : "许一个愿望") + "</h3>" +
+    "<form id='mf'>" +
+      "<div class='field'><label>愿望内容</label><textarea name='text' required maxlength='200' placeholder='想要的东西，或想一起去做的事'>" + (w ? esc(w.text) : "") + "</textarea></div>" +
+      "<div class='field'><label>类型</label><select name='type'>" + opts + "</select></div>" +
+      "<div class='btn-row'><button type='submit' class='btn' style='flex:1;'>保存</button><button type='button' class='btn ghost' data-act='close'>取消</button></div>" +
+    "</form>");
+  $("#mf").addEventListener("submit", function(ev){
+    ev.preventDefault();
+    const f = new FormData(ev.target);
+    const text = String(f.get("text") || "").trim();
+    const type = String(f.get("type") || "other");
+    if (!text) return toast("写个愿望吧");
+    if (w) { w.text = text; w.type = type; }
+    else { state.wishes.push({ id: uid(), text: text, type: type, done: false }); }
+    closeModal(); persist(); renderWishes(); toast("愿望收好了");
+  });
+}
+function toggleWish(id){
+  const w = state.wishes.find(function(x){ return x.id === id; });
+  if (!w) return;
+  w.done = !w.done;
+  if (w.done) w.doneAt = fmtDate(new Date()); else delete w.doneAt;
+  persist(); renderWishes();
+}
+function delWish(id){
+  if (!confirm("删掉这个愿望吗？")) return;
+  state.wishes = state.wishes.filter(function(x){ return x.id !== id; });
+  persist(); renderWishes();
+}
+
+// ============================================================
+// 我们：想对你说的话 / 致阿泠 / 设置 / 备份
+// ============================================================
+function renderUs(){
+  let syncHtml;
+  if (isCloud()) {
+    syncHtml = "<div class='card'><h3><span class='dot'></span>云端同步</h3>" +
+      "<div class='set-row'><span class='l'><span class='sync-dot' id='syncDot'></span><span id='syncText'>同步中…</span></span>" +
+      "<button class='btn ghost sm' data-act='manualSync'>立即同步</button></div>" +
+      "<p class='muted' style='margin-top:8px;'>两个人打开同一个房间号，任何改动都会自动同步</p></div>";
+  } else {
+    syncHtml = "<div class='card'><h3><span class='dot'></span>云端同步</h3>" +
+      "<p class='muted'>现在是离线预览模式，数据只存在这台设备。<br>配置好云端密钥并部署后，就能两个人共同编辑了。</p></div>";
+  }
+
+  const quotesHtml = state.quotes.length
+    ? state.quotes.map(function(q, i){
+        return "<div class='set-row'><span class='l'>" + esc(q) + "</span><span class='small-actions'><span data-act='editQuote' data-id='" + i + "'>✏️</span><span data-act='delQuote' data-id='" + i + "'>🗑️</span></span></div>";
+      }).join("")
+    : "<p class='muted' style='padding:8px 0;'>还没有想说的话，写第一句吧。每日一句会从这里面轮换。</p>";
+
+  $("#us").innerHTML =
+    "<div class='header'><div class='logo'>我们的以后</div><div class='sub'>这里只属于两个人</div></div>" +
+    syncHtml +
+    "<div class='card'><h3><span class='dot'></span>想对你说的话</h3>" + quotesHtml +
+    "<button class='btn block' style='margin-top:10px;' data-act='addQuote'>＋ 写一句想说的话</button></div>" +
+    "<div class='card'><h3><span class='dot'></span>致阿泠</h3>" +
+    "<p class='muted' style='margin-bottom:8px;'>一段话，两个人一起慢慢写</p>" +
+    "<div class='letter'>" + esc(state.letter || "").split(NL).join("<br>") + "</div>" +
+    "<button class='btn ghost block' style='margin-top:10px;' data-act='editLetter'>编辑这段话</button></div>" +
+    "<div class='card'><h3><span class='dot'></span>在一起的日子</h3>" +
+    "<div class='set-row'><span class='l'>纪念日<small>从现在开始算</small></span><span class='v'>" + esc(state.startDate) + " <span class='small-actions'><span data-act='editDate'>✏️</span></span></span></div></div>" +
+    "<div class='card'><h3><span class='dot'></span>房间与暗号</h3>" +
+    "<div class='set-row'><span class='l'>房间号<small>两个人要填一样</small></span><span class='v'>" + esc(room) + "</span></div>" +
+    "<div class='set-row'><span class='l'>暗号<small>只有两个人知道</small></span><span class='v'>•••••• <span class='small-actions'><span data-act='changeSecret'>✏️</span></span></span></div></div>" +
+    "<div class='card'><h3><span class='dot'></span>备份</h3>" +
+    "<p class='muted' style='margin-bottom:10px;'>随时把两个人的以后备份下来，换手机也不丢</p>" +
+    "<div class='btn-row'><button class='btn ghost' style='flex:1;' data-act='exportBackup'>导出备份</button><button class='btn ghost' style='flex:1;' data-act='importBackup'>恢复备份</button></div></div>" +
+    "<div class='card'><button class='btn ghost block' data-act='lock'>🔒 锁定（下次要重新输入暗号）</button></div>";
+  if (isCloud()) setSync(cloudOK ? "ok" : "off");
+}
+
+function quoteModal(i){
+  const editing = (typeof i === "number");
+  const q = editing ? (state.quotes[i] || "") : "";
+  openModal("<h3>" + (editing ? "编辑想说的话" : "写一句想说的话") + "</h3>" +
+    "<form id='mf'>" +
+      "<div class='field'><textarea name='t' required maxlength='200' placeholder='想对你说的话…'>" + esc(q) + "</textarea></div>" +
+      "<div class='btn-row'><button type='submit' class='btn' style='flex:1;'>保存</button><button type='button' class='btn ghost' data-act='close'>取消</button></div>" +
+    "</form>");
+  $("#mf").addEventListener("submit", function(ev){
+    ev.preventDefault();
+    const v = String(new FormData(ev.target).get("t") || "").trim();
+    if (!v) return toast("写一句吧");
+    if (editing) state.quotes[i] = v; else state.quotes.push(v);
+    closeModal(); persist(); renderUs(); renderHome(); toast("想说的话收好了");
+  });
+}
+function delQuote(i){
+  if (!confirm("删掉这句想说的话吗？")) return;
+  state.quotes.splice(i, 1);
+  persist(); renderUs(); renderHome();
+}
+
+function letterModal(){
+  openModal("<h3>致阿泠的话</h3>" +
+    "<form id='mf'>" +
+      "<div class='field'><textarea name='t' required maxlength='1000' style='min-height:180px;'>" + esc(state.letter || "") + "</textarea></div>" +
+      "<div class='btn-row'><button type='submit' class='btn' style='flex:1;'>保存</button><button type='button' class='btn ghost' data-act='close'>取消</button></div>" +
+    "</form>");
+  $("#mf").addEventListener("submit", function(ev){
+    ev.preventDefault();
+    const v = String(new FormData(ev.target).get("t") || "").trim();
+    if (!v) return toast("写点什么吧");
+    state.letter = v;
+    closeModal(); persist(); renderUs(); toast("已保存");
+  });
+}
+
+function dateModal(){
+  openModal("<h3>修改纪念日</h3>" +
+    "<form id='mf'>" +
+      "<div class='field'><label>在一起的日子</label><input name='d' type='date' required value='" + esc(state.startDate) + "'></div>" +
+      "<div class='btn-row'><button type='submit' class='btn' style='flex:1;'>保存</button><button type='button' class='btn ghost' data-act='close'>取消</button></div>" +
+    "</form>");
+  $("#mf").addEventListener("submit", function(ev){
+    ev.preventDefault();
+    const v = String(new FormData(ev.target).get("d") || "");
+    if (!v) return;
+    state.startDate = v;
+    closeModal(); persist(); renderAll(); toast("已更新");
+  });
+}
+
+function changeSecret(){
+  openModal("<h3>修改暗号</h3>" +
+    "<form id='mf'>" +
+      "<div class='field'><label>新的暗号</label><input name='s' type='password' required maxlength='40'></div>" +
+      "<div class='field'><label>再输一次</label><input name='s2' type='password' required maxlength='40'></div>" +
+      "<p class='muted' style='margin-bottom:8px;'>改完记得告诉对方，两边都要重新输入一次</p>" +
+      "<div class='btn-row'><button type='submit' class='btn' style='flex:1;'>保存</button><button type='button' class='btn ghost' data-act='close'>取消</button></div>" +
+    "</form>");
+  $("#mf").addEventListener("submit", function(ev){
+    ev.preventDefault();
+    const f = new FormData(ev.target);
+    const a = String(f.get("s") || "");
+    const b = String(f.get("s2") || "");
+    if (!a || a !== b) return toast("两次输入要一致");
+    secret = a;
+    localStorage.setItem(LS.secret, secret);
+    closeModal();
+    if (isCloud() && objectId) {
+      sbUpdate(objectId, { secret_hash: hashSecret(), updated_at: new Date().toISOString() })
+        .then(function(){ toast("暗号已更新并同步"); })
+        .catch(function(){ toast("暗号已在本机更新，云端稍后同步"); });
+    } else { toast("暗号已更新"); }
+  });
+}
+
+function exportBackup(){
+  const txt = JSON.stringify(state, null, 2);
+  openModal("<h3>导出备份</h3>" +
+    "<p class='muted' style='margin-bottom:8px;'>复制下面这段文字，发给自己或存到备忘录；需要时再粘回来恢复。</p>" +
+    "<textarea id='bk' readonly style='width:100%;height:140px;border-radius:12px;border:1px solid rgba(255,255,255,.15);background:rgba(0,0,0,.25);color:#f6f2ff;padding:10px;font-size:12px;'>" + esc(txt) + "</textarea>" +
+    "<div class='btn-row' style='margin-top:12px;'><button class='btn' style='flex:1;' id='copyBtn'>复制</button><button class='btn ghost' data-act='close'>关闭</button></div>");
+  $("#copyBtn").addEventListener("click", function(){
+    const ok = copyText(txt);
+    toast(ok ? "已复制，去粘贴保存吧" : "复制失败，请长按手动复制");
+  });
+}
+function importBackup(){
+  openModal("<h3>恢复备份</h3>" +
+    "<p class='muted' style='margin-bottom:8px;'>把之前导出的文字粘贴进来，点恢复。</p>" +
+    "<textarea id='bk2' placeholder='粘贴备份文字' style='width:100%;height:140px;border-radius:12px;border:1px solid rgba(255,255,255,.15);background:rgba(0,0,0,.25);color:#f6f2ff;padding:10px;font-size:12px;'></textarea>" +
+    "<div class='btn-row' style='margin-top:12px;'><button class='btn' style='flex:1;' id='restoreBtn'>恢复</button><button class='btn ghost' data-act='close'>取消</button></div>");
+  $("#restoreBtn").addEventListener("click", function(){
+    const v = $("#bk2").value.trim();
+    if (!v) return toast("先粘贴内容");
+    try {
+      const obj = JSON.parse(v);
+      state = merge(defaultState(), obj);
+      persist(); renderAll(); closeModal(); toast("已恢复备份");
+    } catch(e) { toast("格式不对，检查一下"); }
+  });
+}
+
+function manualSync(){
+  if (!isCloud()) return toast("还没配置云端");
+  toast("正在同步…");
+  poll().then(function(){ return push(); }).then(function(){ toast("同步完成"); });
+}
+
+// ============================================================
+// 首次进入：房间号 + 暗号
+// ============================================================
+function showSetup(){
+  $("#app").innerHTML =
+    "<div class='setup'>" +
+      "<div class='big-heart'>💗</div>" +
+      "<div class='title'>阿泠 · 我们的以后</div>" +
+      "<div class='sub'>两个人共同的未来小站</div>" +
+      "<div class='card'>" +
+        "<form id='setupForm'>" +
+          "<div class='field'><label>房间号（两个人约定一个名字）</label><input id='inRoom' required maxlength='40' placeholder='比如 alingforever' value='" + esc(room) + "'></div>" +
+          "<div class='field'><label>暗号（只有两个人知道）</label><input id='inSecret' type='password' required maxlength='40' placeholder='设置一个暗号'></div>" +
+          "<button class='btn block' type='submit'>进入我们的以后 →</button>" +
+        "</form>" +
+        "<p class='muted' style='margin-top:14px;text-align:center;'>房间号和暗号要填得一样，两边才会看到同一份内容</p>" +
+      "</div>" +
+    "</div>";
+  $("#setupForm").addEventListener("submit", function(ev){
+    ev.preventDefault();
+    room = $("#inRoom").value.trim();
+    secret = $("#inSecret").value.trim();
+    if (!room || !secret) return toast("都要填哦");
+    localStorage.setItem(LS.room, room);
+    localStorage.setItem(LS.secret, secret);
+    boot();
+  });
+}
+
+function lockOut(){
+  localStorage.removeItem(LS.room);
+  localStorage.removeItem(LS.secret);
+  stopPoll();
+  room = "";
+  secret = "";
+  showSetup();
+}
+
+function boot(){
+  room = localStorage.getItem(LS.room) || "";
+  secret = localStorage.getItem(LS.secret) || "";
+  if (!room || !secret) { showSetup(); return; }
+  state = merge(defaultState(), loadLocal() || {});
+  renderShell();
+  if (isCloud()) { cloudBoot(); }
+  else { cloudOK = false; toast("离线预览模式：配置云端后即可两人共同编辑"); }
+}
+
+// ============================================================
+// 事件分发
+// ============================================================
+function handleAction(act, id){
+  if (act === "close") return closeModal();
+  if (act === "tab") return switchTab(id);
+  if (act === "addEvent") return eventModal();
+  if (act === "editEvent") return eventModal(id);
+  if (act === "delEvent") return delEvent(id);
+  if (act === "addTodo") return todoModal();
+  if (act === "toggleTodo") return toggleTodo(id);
+  if (act === "editTodo") return todoModal(id);
+  if (act === "delTodo") return delTodo(id);
+  if (act === "addWish") return wishModal();
+  if (act === "toggleWish") return toggleWish(id);
+  if (act === "editWish") return wishModal(id);
+  if (act === "delWish") return delWish(id);
+  if (act === "addQuote") return quoteModal();
+  if (act === "editQuote") return quoteModal(Number(id));
+  if (act === "delQuote") return delQuote(Number(id));
+  if (act === "editLetter") return letterModal();
+  if (act === "editDate") return dateModal();
+  if (act === "exportBackup") return exportBackup();
+  if (act === "importBackup") return importBackup();
+  if (act === "manualSync") return manualSync();
+  if (act === "changeSecret") return changeSecret();
+  if (act === "lock") return lockOut();
+}
+
+function makeStars(){
+  const box = $("#stars");
+  const n = 60;
+  let html = "";
+  for (let i = 0; i < n; i++){
+    const s = (Math.random() * 2 + 1).toFixed(1);
+    const x = (Math.random() * 100).toFixed(2);
+    const y = (Math.random() * 100).toFixed(2);
+    const delay = (Math.random() * 4).toFixed(1);
+    html += "<span class='star' style='width:" + s + "px;height:" + s + "px;left:" + x + "%;top:" + y + "%;animation-delay:" + delay + "s;'></span>";
+  }
+  box.innerHTML = html;
+}
+
+function init(){
+  makeStars();
+  document.addEventListener("click", function(ev){
+    const el = ev.target && ev.target.closest ? ev.target.closest("[data-act]") : null;
+    if (!el) return;
+    handleAction(el.getAttribute("data-act"), el.getAttribute("data-id"));
+  });
+  document.addEventListener("visibilitychange", function(){
+    if (!document.hidden && isCloud()) poll();
+  });
+  boot();
+}
+init();
+
+</script>
+</body>
+</html>
