@@ -788,12 +788,27 @@ function manualSync(){
   toast("正在同步…");
   poll().then(function(){ return push(); }).then(function(){ toast("同步完成"); }).catch(function(e){ toast("同步失败：" + ((e && e.message) ? e.message : "未知错误")); });
 }
+async function testReach(){
+  const ctrl = new AbortController();
+  const timer = setTimeout(function(){ ctrl.abort(); }, 12000);
+  try {
+    await fetch(SB_CONFIG.url + "/auth/v1/health", { mode: "no-cors", signal: ctrl.signal });
+    return true;
+  } catch(e) {
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
+}
 async function testCloud(){
   if (!isCloud()) return toast("还没配置云端");
-  toast("正在测试云端…");
+  toast("正在测试…");
+  const reach = await testReach();
+  if (!reach) { toast("网络连不上 Supabase，试试换 WiFi/流量，或把这个结果告诉我"); return; }
   const pr = await pickKey();
-  if (pr.ok) toast("云端正常，可以同步");
-  else toast("出错：" + (pr.message || ("HTTP " + pr.status)));
+  if (pr.ok) toast("网络通、云端正常，可以同步");
+  else if (pr.status === 0) toast("网络通，但被跨域拦截(CORS)，把这句话发我");
+  else toast("云端出错：" + (pr.message || ("HTTP " + pr.status)));
 }
 
 // ============================================================
