@@ -156,7 +156,8 @@ h1,h2,h3{font-weight:700; letter-spacing:.5px;}
 // ============================================================
 const SB_CONFIG = {
   url: "https://ohrmhwfjutznizzrqyfj.supabase.co",
-  anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9ocm1od2ZqdXR6bmppenJxeWZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNDY4MDIsImV4cCI6MjEwMjcyMjgwMn0._0_1nGmZlpFci0FZ-YhFjDaXCIOMt6qGMi86GfqUTnQ"
+  anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9ocm1od2ZqdXR6bmppenJxeWZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNDY4MDIsImV4cCI6MjEwMjcyMjgwMn0._0_1nGmZlpFci0FZ-YhFjDaXCIOMt6qGMi86GfqUTnQ",
+  publishableKey: "sb_publishable_d0tms40ZRB3Zdt_J8pr0Eg_kZUMYHO2"
 };
 const START_DATE = "2024-06-14";
 const LS = { room: "al_room_v1", secret: "al_secret_v1", local: "al_local_v1" };
@@ -230,20 +231,64 @@ function merge(base, src){ const out = {}; for (const k in base) out[k] = base[k
 // ============================================================
 // 云端（Supabase REST）
 // ============================================================
-async function sbFetch(path, opts){
-  opts = opts || {};
-  const headers = {
-    "apikey": SB_CONFIG.anonKey,
-    "Authorization": "Bearer " + SB_CONFIG.anonKey,
+let activeKey = SB_CONFIG.anonKey;
+let lastCloudError = "";
+
+function sbHeaders(key){
+  return {
+    "apikey": key,
+    "Authorization": "Bearer " + key,
     "Content-Type": "application/json"
   };
-  if (opts.prefer) headers["Prefer"] = opts.prefer;
-  const res = await fetch(SB_CONFIG.url + "/rest/v1/" + path, { method: opts.method || "GET", headers: headers, body: opts.body });
-  const txt = await res.text();
-  let data = null;
-  if (txt) { try { data = JSON.parse(txt); } catch(e) { data = null; } }
-  if (!res.ok) throw new Error(data && data.message ? data.message : ("HTTP " + res.status));
-  return data;
+}
+async function sbFetch(path, opts){
+  opts = opts || {};
+  const ctrl = new AbortController();
+  const timer = setTimeout(function(){ ctrl.abort(); }, 12000);
+  try {
+    const res = await fetch(SB_CONFIG.url + "/rest/v1/" + path, { method: opts.method || "GET", headers: sbHeaders(activeKey), body: opts.body, signal: ctrl.signal });
+    const txt = await res.text();
+    let data = null;
+    if (txt) { try { data = JSON.parse(txt); } catch(e) { data = null; } }
+    if (!res.ok) {
+      const msg = data && data.message ? data.message : ("HTTP " + res.status);
+      lastCloudError = msg;
+      throw new Error(msg);
+    }
+    return data;
+  } catch(e) {
+    if (e && e.name === "AbortError") lastCloudError = "请求超时（12 秒）";
+    else if (!lastCloudError) lastCloudError = (e && e.message) ? e.message : "网络错误";
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+async function probeKey(key){
+  const ctrl = new AbortController();
+  const timer = setTimeout(function(){ ctrl.abort(); }, 12000);
+  try {
+    const res = await fetch(SB_CONFIG.url + "/rest/v1/couple_spaces?select=id&limit=1", { headers: sbHeaders(key), signal: ctrl.signal });
+    const txt = await res.text();
+    let data = null;
+    if (txt) { try { data = JSON.parse(txt); } catch(e) { data = null; } }
+    return { ok: res.ok, status: res.status, message: data && data.message ? data.message : "" };
+  } catch(e) {
+    return { ok: false, status: 0, message: (e && e.name === "AbortError") ? "请求超时" : ((e && e.message) ? e.message : "网络错误") };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+async function pickKey(){
+  activeKey = SB_CONFIG.anonKey;
+  let pr = await probeKey(activeKey);
+  if (pr.ok) return pr;
+  if (SB_CONFIG.publishableKey) {
+    const pr2 = await probeKey(SB_CONFIG.publishableKey);
+    if (pr2.ok || pr2.status === 404) { activeKey = SB_CONFIG.publishableKey; return pr2; }
+    pr = pr2;
+  }
+  return pr;
 }
 async function sbGetByRoom(r){
   const arr = await sbFetch("couple_spaces?select=*&room=eq." + encodeURIComponent(r) + "&order=updated_at.desc&limit=1");
@@ -265,6 +310,11 @@ function hashSecret(){ return hashStr(room + "::" + secret); }
 
 async function cloudBoot(){
   try {
+    const pr = await pickKey();
+    if (!pr.ok) {
+      lastCloudError = pr.message || ("HTTP " + pr.status);
+      throw new Error(lastCloudError);
+    }
     let obj = await sbGetByRoom(room);
     if (obj) {
       if ((obj.secret_hash || "") !== hashSecret()) { toast("暗号好像变了，重新输入一下"); lockOut(); return; }
@@ -285,7 +335,8 @@ async function cloudBoot(){
   } catch(e) {
     console.warn("cloud boot failed", e);
     cloudOK = false;
-    toast("云端暂时连不上，先用本地缓存");
+    lastCloudError = lastCloudError || ((e && e.message) ? e.message : "未知错误");
+    toast("云端连不上：" + lastCloudError);
   }
 }
 
@@ -329,7 +380,7 @@ function setSync(s){
   if (!dot) return;
   if (s === "ok"){ dot.className = "sync-dot"; $("#syncText").textContent = "云端同步正常"; }
   else if (s === "..."){ dot.className = "sync-dot"; $("#syncText").textContent = "同步中…"; }
-  else { dot.className = "sync-dot off"; $("#syncText").textContent = "云端未连接"; }
+  else { dot.className = "sync-dot off"; $("#syncText").textContent = "云端未连接"; const err = $("#syncErr"); if (err) err.textContent = lastCloudError || ""; }
 }
 
 // ============================================================
@@ -592,8 +643,9 @@ function renderUs(){
   let syncHtml;
   if (isCloud()) {
     syncHtml = "<div class='card'><h3><span class='dot'></span>云端同步</h3>" +
-      "<div class='set-row'><span class='l'><span class='sync-dot' id='syncDot'></span><span id='syncText'>同步中…</span></span>" +
-      "<button class='btn ghost sm' data-act='manualSync'>立即同步</button></div>" +
+      "<div class='set-row'><span class='l'><span class='sync-dot' id='syncDot'></span><span id='syncText'>连接中…</span></span>" +
+      "<span class='small-actions'><button class='btn ghost sm' data-act='testCloud'>测试</button><button class='btn ghost sm' data-act='manualSync'>同步</button></span></div>" +
+      "<div id='syncErr' class='muted' style='color:#ff9d9d;margin-top:8px;word-break:break-all;'></div>" +
       "<p class='muted' style='margin-top:8px;'>两个人打开同一个房间号，任何改动都会自动同步</p></div>";
   } else {
     syncHtml = "<div class='card'><h3><span class='dot'></span>云端同步</h3>" +
@@ -734,7 +786,14 @@ function importBackup(){
 function manualSync(){
   if (!isCloud()) return toast("还没配置云端");
   toast("正在同步…");
-  poll().then(function(){ return push(); }).then(function(){ toast("同步完成"); });
+  poll().then(function(){ return push(); }).then(function(){ toast("同步完成"); }).catch(function(e){ toast("同步失败：" + ((e && e.message) ? e.message : "未知错误")); });
+}
+async function testCloud(){
+  if (!isCloud()) return toast("还没配置云端");
+  toast("正在测试云端…");
+  const pr = await pickKey();
+  if (pr.ok) toast("云端正常，可以同步");
+  else toast("出错：" + (pr.message || ("HTTP " + pr.status)));
 }
 
 // ============================================================
@@ -810,6 +869,7 @@ function handleAction(act, id){
   if (act === "exportBackup") return exportBackup();
   if (act === "importBackup") return importBackup();
   if (act === "manualSync") return manualSync();
+  if (act === "testCloud") return testCloud();
   if (act === "changeSecret") return changeSecret();
   if (act === "lock") return lockOut();
 }
