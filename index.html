@@ -159,10 +159,10 @@ const GH_CONFIG = {
   owner: "Mungbean-Cake",
   repo: "aling-future",
   path: "data.json",
-  token: "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"
+  token: ""
 };
 const START_DATE = "2024-06-14";
-const LS = { room: "al_room_v1", secret: "al_secret_v1", local: "al_local_v1" };
+const LS = { room: "al_room_v1", secret: "al_secret_v1", local: "al_local_v1", token: "al_gh_token" };
 const NL = String.fromCharCode(10);
 const WISH_TYPES = [
   { id: "thing", label: "想要的东西", emoji: "🎁" },
@@ -171,7 +171,8 @@ const WISH_TYPES = [
   { id: "other", label: "其他愿望", emoji: "💌" }
 ];
 
-function isCloud(){ return GH_CONFIG.token && GH_CONFIG.token.indexOf("PASTE") < 0; }
+function getToken(){ return (localStorage.getItem(LS.token) || "") || (GH_CONFIG.token || ""); }
+function isCloud(){ return getToken().length > 0; }
 function $(s, r){ return (r || document).querySelector(s); }
 function $$(s, r){ return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
@@ -277,7 +278,7 @@ const GH_FILE = GH_API + "/contents/" + GH_CONFIG.path;
 async function ghFetch(url, opts){
   opts = opts || {};
   const headers = {
-    "Authorization": "Bearer " + GH_CONFIG.token,
+    "Authorization": "Bearer " + getToken(),
     "Accept": "application/vnd.github+json",
     "X-GitHub-Api-Version": "2022-11-28"
   };
@@ -658,10 +659,12 @@ function renderUs(){
       "<div class='set-row'><span class='l'><span class='sync-dot' id='syncDot'></span><span id='syncText'>连接中…</span></span>" +
       "<span class='small-actions'><button class='btn ghost sm' data-act='testCloud'>测试</button><button class='btn ghost sm' data-act='manualSync'>同步</button></span></div>" +
       "<div id='syncErr' class='muted' style='color:#ff9d9d;margin-top:8px;word-break:break-all;'></div>" +
-      "<p class='muted' style='margin-top:8px;'>两个人打开同一个房间号，任何改动都会自动同步</p></div>";
+      "<p class='muted' style='margin-top:8px;'>两个人打开同一个房间号，任何改动都会自动同步 · <span data-act='clearToken' style='color:#ff9d9d;'>改Token</span></p></div>";
   } else {
     syncHtml = "<div class='card'><h3><span class='dot'></span>云端同步</h3>" +
-      "<p class='muted'>现在是离线预览模式，数据只存在这台设备。<br>配置好云端密钥并部署后，就能两个人共同编辑了。</p></div>";
+      "<p class='muted' style='margin-bottom:10px;'>把 GitHub Token 粘进来，就能开启两个人同步。<br>Token 只存在这台设备，不会上传到仓库。</p>" +
+      "<input id='ghTokenInput' type='password' placeholder='粘贴 ghp_ 开头的 Token' style='width:100%;padding:11px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:#f6f2ff;font-size:14px;'>" +
+      "<button class='btn block' style='margin-top:10px;' data-act='saveToken'>保存并连接云端</button></div>";
   }
 
   const quotesHtml = state.quotes.length
@@ -826,6 +829,22 @@ async function testCloud(){
     toast("GitHub 出错：" + ((e && e.message) ? e.message : "未知"));
   }
 }
+function saveToken(){
+  const inp = $("#ghTokenInput");
+  const v = inp ? inp.value.trim() : "";
+  if (!v) return toast("先粘贴 Token");
+  localStorage.setItem(LS.token, v);
+  toast("已保存，正在连接…");
+  boot();
+}
+function clearToken(){
+  localStorage.removeItem(LS.token);
+  stopPoll();
+  cloudOK = false;
+  lastCloudError = "";
+  renderUs();
+  toast("已移除 Token，可重新填写");
+}
 
 // ============================================================
 // 首次进入：房间号 + 暗号
@@ -872,7 +891,7 @@ function boot(){
   state = merge(defaultState(), loadLocal() || {});
   renderShell();
   if (isCloud()) { cloudBoot(); }
-  else { cloudOK = false; toast("离线预览模式：配置云端后即可两人共同编辑"); }
+  else { cloudOK = false; toast("去「我们」页填一下 GitHub Token，就能开启同步"); }
 }
 
 // ============================================================
@@ -901,6 +920,8 @@ function handleAction(act, id){
   if (act === "importBackup") return importBackup();
   if (act === "manualSync") return manualSync();
   if (act === "testCloud") return testCloud();
+  if (act === "saveToken") return saveToken();
+  if (act === "clearToken") return clearToken();
   if (act === "changeSecret") return changeSecret();
   if (act === "lock") return lockOut();
 }
