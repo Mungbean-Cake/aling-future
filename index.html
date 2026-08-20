@@ -150,14 +150,16 @@ h1,h2,h3{font-weight:700; letter-spacing:.5px;}
 <script>
 "use strict";
 // ============================================================
-// 云端配置：把 Supabase 的两样东西粘贴进来（部署前必填）
-// anon key 本身设计为可公开，但内容仅靠房间号+暗号做门禁；
-// 建议专门为这个小站建一个独立项目，别放其他敏感数据。
+// 云端配置：把 GitHub 的 Token 粘贴进来（部署前必填）
+// 数据会用“房间号+暗号”加密后，存到仓库里的 data.json；
+// 就算仓库是公开的，别人也看不到内容。
+// Token 只需要这一个仓库的 Contents（读写）权限。
 // ============================================================
-const SB_CONFIG = {
-  url: "https://ohrmhwfjutznizzrqyfj.supabase.co",
-  anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9ocm1od2ZqdXR6bmppenJxeWZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNDY4MDIsImV4cCI6MjEwMjcyMjgwMn0._0_1nGmZlpFci0FZ-YhFjDaXCIOMt6qGMi86GfqUTnQ",
-  publishableKey: "sb_publishable_d0tms40ZRB3Zdt_J8pr0Eg_kZUMYHO2"
+const GH_CONFIG = {
+  owner: "Mungbean-Cake",
+  repo: "aling-future",
+  path: "data.json",
+  token: "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"
 };
 const START_DATE = "2024-06-14";
 const LS = { room: "al_room_v1", secret: "al_secret_v1", local: "al_local_v1" };
@@ -169,7 +171,7 @@ const WISH_TYPES = [
   { id: "other", label: "其他愿望", emoji: "💌" }
 ];
 
-function isCloud(){ return SB_CONFIG.url && SB_CONFIG.url.indexOf("PASTE") < 0; }
+function isCloud(){ return GH_CONFIG.token && GH_CONFIG.token.indexOf("PASTE") < 0; }
 function $(s, r){ return (r || document).querySelector(s); }
 function $$(s, r){ return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
@@ -216,8 +218,7 @@ function defaultState(){
 let state = null;
 let room = "";
 let secret = "";
-let objectId = null;
-let lastSeen = null;
+let lastSha = null;
 let pollTimer = null;
 let pushTimer = null;
 let tickerTimer = null;
@@ -229,104 +230,106 @@ function saveLocal(){ try { localStorage.setItem(LS.local, JSON.stringify(state)
 function merge(base, src){ const out = {}; for (const k in base) out[k] = base[k]; if (src) for (const k in src) out[k] = src[k]; return out; }
 
 // ============================================================
-// 云端（Supabase REST）
+// 加密：内容用「房间号+暗号」加密后再上传
 // ============================================================
-let activeKey = SB_CONFIG.anonKey;
-let lastCloudError = "";
-
-function sbHeaders(key){
-  return {
-    "apikey": key,
-    "Authorization": "Bearer " + key,
-    "Content-Type": "application/json"
-  };
+function b64FromBytes(u){
+  let s = "";
+  for (let i = 0; i < u.length; i++) s += String.fromCharCode(u[i]);
+  return btoa(s);
 }
-async function sbFetch(path, opts){
+function b64ToBytes(b){
+  const s = atob(b);
+  const u = new Uint8Array(s.length);
+  for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i);
+  return u;
+}
+async function deriveKey(password){
+  const enc = new TextEncoder();
+  const buf = await crypto.subtle.digest("SHA-256", enc.encode(password));
+  return crypto.subtle.importKey("raw", buf, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
+}
+async function encryptText(plain, password){
+  const key = await deriveKey(password);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const enc = new TextEncoder();
+  const ct = await crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, key, enc.encode(plain));
+  const all = new Uint8Array(iv.length + ct.byteLength);
+  all.set(iv, 0);
+  all.set(new Uint8Array(ct), iv.length);
+  return b64FromBytes(all);
+}
+async function decryptText(b64, password){
+  const key = await deriveKey(password);
+  const all = b64ToBytes(b64);
+  const iv = all.slice(0, 12);
+  const ct = all.slice(12);
+  const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: iv }, key, ct);
+  return new TextDecoder().decode(pt);
+}
+
+// ============================================================
+// 云端（GitHub 仓库 data.json）
+// ============================================================
+let lastCloudError = "";
+const GH_API = "https://api.github.com/repos/" + GH_CONFIG.owner + "/" + GH_CONFIG.repo;
+const GH_FILE = GH_API + "/contents/" + GH_CONFIG.path;
+
+async function ghFetch(url, opts){
   opts = opts || {};
+  const headers = {
+    "Authorization": "Bearer " + GH_CONFIG.token,
+    "Accept": "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2022-11-28"
+  };
+  if (opts.body) headers["Content-Type"] = "application/json";
   const ctrl = new AbortController();
   const timer = setTimeout(function(){ ctrl.abort(); }, 12000);
   try {
-    const res = await fetch(SB_CONFIG.url + "/rest/v1/" + path, { method: opts.method || "GET", headers: sbHeaders(activeKey), body: opts.body, signal: ctrl.signal });
+    const res = await fetch(url, { method: opts.method || "GET", headers: headers, body: opts.body, signal: ctrl.signal });
     const txt = await res.text();
     let data = null;
     if (txt) { try { data = JSON.parse(txt); } catch(e) { data = null; } }
     if (!res.ok) {
       const msg = data && data.message ? data.message : ("HTTP " + res.status);
-      lastCloudError = msg;
-      throw new Error(msg);
+      const err = new Error(msg);
+      err.status = res.status;
+      throw err;
     }
     return data;
-  } catch(e) {
-    if (e && e.name === "AbortError") lastCloudError = "请求超时（12 秒）";
-    else if (!lastCloudError) lastCloudError = (e && e.message) ? e.message : "网络错误";
-    throw e;
   } finally {
     clearTimeout(timer);
   }
 }
-async function probeKey(key){
-  const ctrl = new AbortController();
-  const timer = setTimeout(function(){ ctrl.abort(); }, 12000);
+async function ghGetFile(){
   try {
-    const res = await fetch(SB_CONFIG.url + "/rest/v1/couple_spaces?select=id&limit=1", { headers: sbHeaders(key), signal: ctrl.signal });
-    const txt = await res.text();
-    let data = null;
-    if (txt) { try { data = JSON.parse(txt); } catch(e) { data = null; } }
-    return { ok: res.ok, status: res.status, message: data && data.message ? data.message : "" };
+    const data = await ghFetch(GH_FILE);
+    return { sha: data.sha, content: data.content };
   } catch(e) {
-    return { ok: false, status: 0, message: (e && e.name === "AbortError") ? "请求超时" : ((e && e.message) ? e.message : "网络错误") };
-  } finally {
-    clearTimeout(timer);
+    if (e && e.status === 404) return null;
+    throw e;
   }
 }
-async function pickKey(){
-  activeKey = SB_CONFIG.anonKey;
-  let pr = await probeKey(activeKey);
-  if (pr.ok) return pr;
-  if (SB_CONFIG.publishableKey) {
-    const pr2 = await probeKey(SB_CONFIG.publishableKey);
-    if (pr2.ok || pr2.status === 404) { activeKey = SB_CONFIG.publishableKey; return pr2; }
-    pr = pr2;
-  }
-  return pr;
+async function ghPutFile(b64Content, sha){
+  const body = { message: "sync", content: b64Content, branch: "main" };
+  if (sha) body.sha = sha;
+  const data = await ghFetch(GH_FILE, { method: "PUT", body: JSON.stringify(body) });
+  return data && data.content ? data.content.sha : null;
 }
-async function sbGetByRoom(r){
-  const arr = await sbFetch("couple_spaces?select=*&room=eq." + encodeURIComponent(r) + "&order=updated_at.desc&limit=1");
-  return (arr && arr[0]) ? arr[0] : null;
-}
-async function sbGetById(id){
-  const arr = await sbFetch("couple_spaces?select=*&id=eq." + encodeURIComponent(id));
-  return (arr && arr[0]) ? arr[0] : null;
-}
-async function sbInsert(row){
-  const arr = await sbFetch("couple_spaces", { method: "POST", body: JSON.stringify(row), prefer: "return=representation" });
-  return (arr && arr[0]) ? arr[0] : null;
-}
-async function sbUpdate(id, fields){
-  const arr = await sbFetch("couple_spaces?id=eq." + encodeURIComponent(id), { method: "PATCH", body: JSON.stringify(fields), prefer: "return=representation" });
-  return (arr && arr[0]) ? arr[0] : null;
-}
-function hashSecret(){ return hashStr(room + "::" + secret); }
+function pwdStr(){ return room + "::" + secret; }
 
 async function cloudBoot(){
   try {
-    const pr = await pickKey();
-    if (!pr.ok) {
-      lastCloudError = pr.message || ("HTTP " + pr.status);
-      throw new Error(lastCloudError);
-    }
-    let obj = await sbGetByRoom(room);
-    if (obj) {
-      if ((obj.secret_hash || "") !== hashSecret()) { toast("暗号好像变了，重新输入一下"); lockOut(); return; }
-      state = merge(defaultState(), JSON.parse(obj.data || "{}"));
-      objectId = obj.id;
-      lastSeen = obj.updated_at;
+    const file = await ghGetFile();
+    if (file) {
+      let remoteState = null;
+      try { remoteState = JSON.parse(await decryptText(atob(file.content), pwdStr())); }
+      catch(e) { remoteState = null; }
+      if (!remoteState) { toast("暗号不对或数据读不出来，重新输入一下"); lockOut(); return; }
+      state = merge(defaultState(), remoteState);
+      lastSha = file.sha;
     } else {
-      const now = new Date().toISOString();
-      obj = await sbInsert({ room: room, secret_hash: hashSecret(), data: JSON.stringify(defaultState()), updated_at: now, created_at: now });
-      state = defaultState();
-      objectId = obj.id;
-      lastSeen = obj.updated_at;
+      const enc = await encryptText(JSON.stringify(state), pwdStr());
+      lastSha = await ghPutFile(btoa(enc), null);
     }
     cloudOK = true;
     saveLocal();
@@ -341,39 +344,48 @@ async function cloudBoot(){
 }
 
 async function push(){
-  if (!isCloud() || !objectId || syncing) return;
+  if (!isCloud() || syncing) return;
   syncing = true;
   setSync("...");
   try {
-    const now = new Date().toISOString();
-    const obj = await sbUpdate(objectId, { data: JSON.stringify(state), updated_at: now });
-    lastSeen = obj ? obj.updated_at : now;
+    const enc = await encryptText(JSON.stringify(state), pwdStr());
+    try {
+      lastSha = await ghPutFile(btoa(enc), lastSha);
+    } catch(e) {
+      if (e && e.status === 409) {
+        const file = await ghGetFile();
+        if (file) { lastSha = file.sha; lastSha = await ghPutFile(btoa(enc), lastSha); }
+        else throw e;
+      } else throw e;
+    }
     cloudOK = true;
     setSync("ok");
   } catch(e) {
     cloudOK = false;
+    lastCloudError = (e && e.message) ? e.message : "未知错误";
     setSync("off");
   } finally { syncing = false; }
 }
 
 async function poll(){
-  if (!isCloud() || !objectId) return;
+  if (!isCloud()) return;
   try {
-    const obj = await sbGetById(objectId);
-    if (obj && obj.updated_at && obj.updated_at !== lastSeen) {
-      state = merge(defaultState(), JSON.parse(obj.data || "{}"));
-      lastSeen = obj.updated_at;
+    const file = await ghGetFile();
+    if (file && file.sha !== lastSha) {
+      const remoteState = JSON.parse(await decryptText(atob(file.content), pwdStr()));
+      state = merge(defaultState(), remoteState);
+      lastSha = file.sha;
       saveLocal();
       renderAll();
     }
     cloudOK = true;
     setSync("ok");
-  } catch(e) { cloudOK = false; setSync("off"); }
+  } catch(e) { cloudOK = false; lastCloudError = (e && e.message) ? e.message : "未知错误"; setSync("off"); }
 }
 
 function schedulePush(){ if (isCloud()){ clearTimeout(pushTimer); pushTimer = setTimeout(push, 500); } else { saveLocal(); } }
 function persist(){ schedulePush(); }
-function startPoll(){ stopPoll(); if (isCloud()) pollTimer = setInterval(poll, 3500); }
+function startPoll(){ stopPoll(); if (isCloud()) pollTimer = setInterval(poll, 6000); }
 function stopPoll(){ if (pollTimer){ clearInterval(pollTimer); pollTimer = null; } }
 function setSync(s){
   const dot = $("#syncDot");
@@ -748,9 +760,10 @@ function changeSecret(){
     secret = a;
     localStorage.setItem(LS.secret, secret);
     closeModal();
-    if (isCloud() && objectId) {
-      sbUpdate(objectId, { secret_hash: hashSecret(), updated_at: new Date().toISOString() })
-        .then(function(){ toast("暗号已更新并同步"); })
+    if (isCloud()) {
+      encryptText(JSON.stringify(state), pwdStr())
+        .then(function(enc){ return ghPutFile(btoa(enc), lastSha); })
+        .then(function(sha){ lastSha = sha; toast("暗号已更新并同步"); })
         .catch(function(){ toast("暗号已在本机更新，云端稍后同步"); });
     } else { toast("暗号已更新"); }
   });
@@ -792,7 +805,7 @@ async function testReach(){
   const ctrl = new AbortController();
   const timer = setTimeout(function(){ ctrl.abort(); }, 12000);
   try {
-    await fetch(SB_CONFIG.url + "/auth/v1/health", { mode: "no-cors", signal: ctrl.signal });
+    await fetch("https://api.github.com/", { mode: "no-cors", signal: ctrl.signal });
     return true;
   } catch(e) {
     return false;
@@ -804,11 +817,14 @@ async function testCloud(){
   if (!isCloud()) return toast("还没配置云端");
   toast("正在测试…");
   const reach = await testReach();
-  if (!reach) { toast("网络连不上 Supabase，试试换 WiFi/流量，或把这个结果告诉我"); return; }
-  const pr = await pickKey();
-  if (pr.ok) toast("网络通、云端正常，可以同步");
-  else if (pr.status === 0) toast("网络通，但被跨域拦截(CORS)，把这句话发我");
-  else toast("云端出错：" + (pr.message || ("HTTP " + pr.status)));
+  if (!reach) { toast("网络连不上 GitHub，试试换 WiFi/流量"); return; }
+  try {
+    const file = await ghGetFile();
+    if (file) toast("云端正常，数据文件在，可以同步");
+    else toast("云端正常，还没有数据文件（第一次保存会自动创建）");
+  } catch(e) {
+    toast("GitHub 出错：" + ((e && e.message) ? e.message : "未知"));
+  }
 }
 
 // ============================================================
